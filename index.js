@@ -1359,7 +1359,15 @@ function createBot() {
       const msg = err.message || "";
       addLog(`[Bot] Error: ${msg}`);
       botState.errors.push({ type: "error", message: msg, time: Date.now() });
-      // Don't reconnect on error - let 'end' event handle it
+
+      const connectionErrors = ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EHOSTUNREACH", "ENOTFOUND", "EPIPE"];
+      const isConnectionError = connectionErrors.some((code) => msg.includes(code) || err.code === code);
+      if (isConnectionError) {
+        addLog(`[Bot] Connection-level error detected (${err.code || msg}) — scheduling reconnect`);
+        botState.connected = false;
+        clearAllIntervals();
+        scheduleReconnect();
+      }
     });
   } catch (err) {
     addLog(`[Bot] Failed to create bot: ${err.message}`);
